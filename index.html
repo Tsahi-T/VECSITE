@@ -552,7 +552,7 @@ function setActive(secId){
   navLinks.forEach(a=>a.classList.toggle('active',a.dataset.sec===secId));
   const np=document.querySelector(`.np .nl[data-sec="${secId}"]`);
   document.querySelectorAll('.np').forEach(el=>{
-    if(np&&el.contains(np))el.classList.remove('closed');
+    el.classList.toggle('closed',!(np&&el.contains(np)));
   });
 }
 const secObs=new IntersectionObserver(es=>{
