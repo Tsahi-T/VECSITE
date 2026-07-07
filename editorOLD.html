@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>עורך תוכן — וקטור על</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700;800;900&family=Heebo:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--surface3:#30363d;
+  --border:#30363d;--border2:#484f58;
+  --pri:#60A5FA;--sec:#A78BFA;--grn:#34D399;--red:#F87171;--yel:#FBBF24;
+  --ink:#e6edf3;--dim:#8b949e;--muted:#6e7681;
+  --radius:10px;--radius-sm:6px;
+  --font:'Heebo',sans-serif;--mono:'Space Mono',monospace;--head:'Rubik',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:300px 1fr;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
+.topbar{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 20px;
+  background:var(--surface);border-bottom:1px solid var(--border);z-index:10}
+.topbar-logo{font-family:var(--head);font-weight:800;font-size:16px;
+  background:linear-gradient(100deg,var(--pri),#fff 80%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.topbar-sub{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.2em}
+.topbar-sep{flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);
+  border:1px solid var(--border2);background:var(--surface2);color:var(--ink);font-family:var(--font);font-size:13px;
+  cursor:pointer;transition:all .18s;white-space:nowrap}
+.btn:hover{background:var(--surface3);border-color:var(--pri)}
+.btn-pri{background:var(--pri);border-color:var(--pri);color:#000;font-weight:600}
+.btn-pri:hover{background:#93c5fd;border-color:#93c5fd}
+.btn-grn{background:var(--grn);border-color:var(--grn);color:#000;font-weight:600}
+.btn-grn:hover{background:#6ee7b7;border-color:#6ee7b7}
+.btn-red{background:transparent;border-color:var(--red);color:var(--red)}
+.btn-red:hover{background:rgba(248,113,113,.1)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn svg{width:14px;height:14px;flex-shrink:0}
+
+.sidebar{background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-hd{padding:14px 16px 10px;border-bottom:1px solid var(--border)}
+.sidebar-hd h3{font-family:var(--head);font-weight:700;font-size:13px;color:var(--dim);letter-spacing:.08em;margin-bottom:10px}
+.slide-list{flex:1;overflow-y:auto;padding:8px 8px}
+.slide-list::-webkit-scrollbar{width:4px}
+.slide-list::-webkit-scrollbar-track{background:transparent}
+.slide-list::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px}
+
+.slide-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-sm);
+  cursor:pointer;border:1px solid transparent;margin-bottom:3px;transition:all .15s;user-select:none}
+.slide-item:hover{background:var(--surface2);border-color:var(--border)}
+.slide-item.active{background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.35)}
+.slide-num{font-family:var(--mono);font-size:9px;color:var(--muted);min-width:20px}
+.slide-name{font-size:13px;font-weight:500;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slide-type{font-family:var(--mono);font-size:9px;color:var(--muted);padding:2px 6px;background:var(--surface3);border-radius:3px}
+.slide-item.active .slide-name{color:var(--pri)}
+.slide-item.active .slide-type{color:var(--pri)}
+.slide-drag{cursor:grab;color:var(--muted);font-size:12px;opacity:.5}
+.slide-drag:active{cursor:grabbing}
+
+.sidebar-foot{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px}
+
+/* ── MAIN PANEL ── */
+.main{display:flex;flex-direction:column;overflow:hidden}
+.main-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface);padding:0 20px;flex-shrink:0}
+.tab{padding:14px 18px;font-size:13px;font-weight:500;color:var(--dim);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--pri);border-bottom-color:var(--pri)}
+
+/* ── MAIN CONTENT AREA ── */
+.main-content{flex:1;overflow:hidden;position:relative}
+
+/* ── PANEL VIEWS ── */
+.panel{display:none;position:absolute;inset:0}
+.panel.active{display:block}
+
+/* ── IMPORT / EXPORT / THEMES panels scroll normally ── */
+#panelImport,#panelExport,#panelThemes{overflow-y:auto;padding:24px 28px}
+#panelImport::-webkit-scrollbar,#panelExport::-webkit-scrollbar,#panelThemes::-webkit-scrollbar{width:6px}
+#panelImport::-webkit-scrollbar-track,#panelExport::-webkit-scrollbar-track,#panelThemes::-webkit-scrollbar-track{background:transparent}
+#panelImport::-webkit-scrollbar-thumb,#panelExport::-webkit-scrollbar-thumb,#panelThemes::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px}
+
+/* ── EDIT PANEL: split view ── */
+#panelEdit{height:100%;overflow:hidden}
+#panelEdit.active{display:flex}
+
+.edit-pane{flex:1;min-width:0;overflow-y:auto;padding:24px 28px}
+.edit-pane::-webkit-scrollbar{width:6px}
+.edit-pane::-webkit-scrollbar-track{background:transparent}
+.edit-pane::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px}
+
+.preview-pane{width:400px;flex-shrink:0;border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column}
+
+.preview-header{height:38px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.15em;
+  color:var(--muted);display:flex;align-items:center;border-bottom:1px solid var(--border);background:var(--surface2);flex-shrink:0}
+
+.preview-viewport{flex:1;overflow:hidden;position:relative;background:#030610}
+
+/* ── IMPORT PANEL ── */
+.import-wrap{max-width:700px;margin:0 auto}
+.import-wrap h2{font-family:var(--head);font-weight:700;font-size:20px;margin-bottom:6px}
+.import-wrap p{color:var(--dim);line-height:1.6;margin-bottom:20px}
+.code-area{width:100%;min-height:280px;padding:14px;border-radius:var(--radius);
+  border:1px solid var(--border2);background:var(--surface2);
+  color:#e6edf3;font-family:var(--mono);font-size:12px;line-height:1.6;
+  resize:vertical;outline:none;transition:border-color .2s;direction:ltr}
+.code-area:focus{border-color:var(--pri)}
+.import-actions{display:flex;gap:10px;margin-top:14px}
+.notice{padding:12px 16px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:16px;display:none}
+.notice.info{background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);color:#93c5fd;display:flex;gap:8px;align-items:flex-start}
+.notice.error{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);color:#fca5a5;display:flex;gap:8px;align-items:flex-start}
+.notice.success{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.3);color:#6ee7b7;display:flex;gap:8px;align-items:flex-start}
+
+/* ── EDITOR PANEL ── */
+.editor-empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.editor-empty svg{width:48px;height:48px;margin:0 auto 16px;display:block;opacity:.3}
+.stage-editor{max-width:820px}
+.stage-header{display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+.stage-header h2{font-family:var(--head);font-weight:700;font-size:20px;flex:1}
+.type-badge{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:20px;
+  background:rgba(96,165,250,.15);border:1px solid rgba(96,165,250,.35);color:var(--pri);letter-spacing:.06em}
+
+.field-group{margin-bottom:20px}
+.field-row{display:grid;gap:14px;grid-template-columns:1fr 1fr;margin-bottom:14px}
+.field-row.full{grid-template-columns:1fr}
+label{display:block;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.1em;margin-bottom:6px}
+input[type=text],textarea,select{width:100%;padding:9px 12px;border-radius:var(--radius-sm);
+  border:1px solid var(--border2);background:var(--surface2);color:var(--ink);
+  font-family:var(--font);font-size:13px;outline:none;transition:border-color .18s;direction:rtl}
+input[type=text]:focus,textarea:focus,select:focus{border-color:var(--pri)}
+textarea{resize:vertical;min-height:70px;line-height:1.6}
+select{cursor:pointer}
+select option{background:var(--surface2)}
+
+/* ── SECTION BOX ── */
+.section-box{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden}
+.section-box-head{display:flex;align-items:center;gap:10px;padding:12px 14px;
+  background:var(--surface2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+.section-box-head h4{font-weight:600;font-size:13px;flex:1}
+.section-box-head .toggle-icon{color:var(--muted);font-size:16px;line-height:1;transition:transform .2s}
+.section-box.collapsed .toggle-icon{transform:rotate(-90deg)}
+.section-box-body{padding:14px;display:flex;flex-direction:column;gap:10px}
+.section-box.collapsed .section-box-body{display:none}
+
+/* ── ARRAY ITEMS ── */
+.array-items{display:flex;flex-direction:column;gap:8px}
+.array-item{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.array-item-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2)}
+.array-item-num{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:22px}
+.array-item-preview{flex:1;font-size:12px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.array-item-body{padding:12px;display:flex;flex-direction:column;gap:8px}
+.array-item.collapsed .array-item-body{display:none}
+.sub-list{display:flex;flex-direction:column;gap:6px}
+.sub-list-item{display:flex;gap:6px;align-items:flex-start}
+.sub-list-item input{flex:1}
+.drag-handle{color:var(--muted);cursor:grab;font-size:14px;padding:4px;line-height:1}
+
+/* ── CHIPS EDITOR ── */
+.chips-list{display:flex;flex-direction:column;gap:6px}
+.chip-row{display:flex;gap:6px}
+.chip-row input{flex:1}
+
+/* ── EXPORT PANEL ── */
+.export-wrap{max-width:820px;margin:0 auto}
+.export-wrap h2{font-family:var(--head);font-weight:700;font-size:20px;margin-bottom:6px}
+.export-wrap p{color:var(--dim);line-height:1.6;margin-bottom:20px}
+.copy-btn-wrap{position:relative;margin-bottom:10px}
+.copy-feedback{display:none;position:absolute;top:50%;left:14px;transform:translateY(-50%);
+  font-size:12px;color:var(--grn);font-family:var(--mono)}
+.export-code{width:100%;height:420px;padding:14px;border-radius:var(--radius);
+  border:1px solid var(--border2);background:var(--surface2);
+  color:#e6edf3;font-family:var(--mono);font-size:11.5px;line-height:1.65;
+  resize:none;outline:none;direction:ltr}
+
+/* ── THEMES PANEL ── */
+.themes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:20px}
+.theme-card{border:1px solid var(--border);border-radius:var(--radius);padding:14px;background:var(--surface2);position:relative}
+.theme-swatch{display:flex;gap:6px;margin-bottom:10px}
+.swatch{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.15)}
+.theme-num{font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:8px}
+.theme-fields{display:flex;flex-direction:column;gap:6px}
+.color-row{display:flex;align-items:center;gap:8px}
+.color-row label{margin:0;min-width:30px}
+.color-row input[type=color]{width:36px;height:28px;padding:2px;border-radius:4px;border:1px solid var(--border2);background:transparent;cursor:pointer}
+.color-row input[type=text]{font-size:11px;padding:5px 8px}
+
+/* ── DRAG OVER ── */
+.drag-over{border-color:var(--pri)!important;background:rgba(96,165,250,.05)}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;right:50%;transform:translateX(50%);
+  background:var(--surface3);border:1px solid var(--border2);border-radius:var(--radius);
+  padding:10px 18px;font-size:13px;color:var(--ink);box-shadow:0 8px 32px rgba(0,0,0,.5);
+  z-index:1000;opacity:0;transition:opacity .25s;pointer-events:none}
+#toast.show{opacity:1}
+
+/* ── PREVIEW STAGE SCOPED CSS ── */
+.preview-stage{
+  position:absolute;top:0;left:0;
+  width:1100px;height:700px;
+  background:var(--bg,#030610);
+  color:var(--ink,#F0F6FF);
+  font-family:'Heebo',sans-serif;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;padding:40px 48px;
+  overflow:hidden;
+  transform-origin:top left;
+}
+.preview-stage .eyebrow{display:flex;align-items:center;justify-content:center;gap:14px;
+  font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.3em;color:var(--pri)}
+.preview-stage .eyebrow::before,.preview-stage .eyebrow::after{content:'';display:block;width:50px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--pri))}
+.preview-stage .eyebrow::before{transform:scaleX(-1)}
+.preview-stage .ttl{font-family:'Rubik',sans-serif;font-weight:900;letter-spacing:-.02em;line-height:1.06;
+  font-size:clamp(28px,5vw,62px);margin:14px 0 10px}
+.preview-stage .ttl .hi{background:linear-gradient(110deg,var(--pri) 0%,var(--sec) 55%,#F0F6FF 90%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.preview-stage .sub{font-size:clamp(15px,1.8vw,19px);color:rgba(240,246,255,.88);font-weight:300;max-width:780px;line-height:1.7;margin-bottom:28px}
+.preview-stage .grid{display:grid;gap:14px;width:100%}
+.preview-stage .grid.c2{grid-template-columns:repeat(2,1fr)}
+.preview-stage .grid.c3{grid-template-columns:repeat(3,1fr)}
+.preview-stage .grid.c4{grid-template-columns:repeat(4,1fr)}
+.preview-stage .card{position:relative;padding:22px 22px 20px;border-radius:16px;text-align:right;
+  background:rgba(255,255,255,.042);border:1px solid rgba(255,255,255,.1);overflow:hidden}
+.preview-stage .card::before{content:'';position:absolute;top:0;right:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--pri),var(--sec));border-radius:0 16px 16px 0;opacity:.75}
+.preview-stage .card-accent{position:absolute;top:0;right:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--pri),var(--sec));border-radius:0 16px 16px 0;opacity:.75}
+.preview-stage .cn{font-family:'Space Mono',monospace;font-size:12px;color:var(--pri);letter-spacing:.1em;margin-bottom:10px;display:block}
+.preview-stage .ct{font-size:16px;line-height:1.65;color:rgba(240,246,255,.9);font-weight:400}
+.preview-stage .hero-ttl{font-size:clamp(32px,6.2vw,74px)!important;margin:18px 0 24px!important}
+.preview-stage .msn{display:flex;gap:18px;align-items:flex-start;max-width:840px;padding:22px 24px;border-radius:18px;
+  text-align:right;background:linear-gradient(135deg,rgba(var(--pri-r),var(--pri-g),var(--pri-b),.07),rgba(var(--sec-r),var(--sec-g),var(--sec-b),.04));
+  border:1px solid rgba(var(--pri-r),var(--pri-g),var(--pri-b),.22);margin-bottom:24px}
+.preview-stage .msn-tag{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.24em;color:var(--pri);
+  writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;opacity:.75;flex-shrink:0}
+.preview-stage .msn-txt{font-size:clamp(15px,1.9vw,20px);line-height:1.7;color:rgba(240,246,255,.96);font-weight:300}
+.preview-stage .chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.preview-stage .chip{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;padding:8px 16px;border-radius:100px;
+  border:1px solid rgba(var(--pri-r),var(--pri-g),var(--pri-b),.22);color:rgba(240,246,255,.88);
+  background:rgba(var(--pri-r),var(--pri-g),var(--pri-b),.06)}
+.preview-stage .chip b{color:var(--pri)}
+.preview-stage .pipe{display:flex;align-items:flex-start;gap:0;width:100%;direction:ltr}
+.preview-stage .ps{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
+.preview-stage .ps-top{display:flex;align-items:center;width:100%;margin-bottom:18px}
+.preview-stage .ps-badge{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;
+  font-family:'Rubik',sans-serif;font-weight:800;font-size:18px;color:var(--bg,#030610);
+  background:linear-gradient(135deg,var(--pri),var(--sec));flex-shrink:0;z-index:2}
+.preview-stage .ps-conn{flex:1;height:2px;position:relative;overflow:hidden;background:rgba(255,255,255,.08)}
+.preview-stage .ps-conn::after{content:'';position:absolute;inset-block:0;right:-100%;width:50%;
+  background:linear-gradient(90deg,transparent,var(--pri) 50%,transparent);animation:pvFlowLine 2.5s linear infinite}
+@keyframes pvFlowLine{to{right:150%}}
+.preview-stage .ps:last-child .ps-conn{display:none}
+.preview-stage .ps-name{font-family:'Rubik',sans-serif;font-weight:700;font-size:15px;color:#F0F6FF;margin-bottom:7px;direction:rtl}
+.preview-stage .ps-desc{font-size:14px;line-height:1.6;color:rgba(240,246,255,.88);font-weight:300;direction:rtl;padding:0 6px;text-align:center}
+.preview-stage .rcat{padding:17px 16px 15px;border-radius:14px;text-align:right;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09)}
+.preview-stage .rcat-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-direction:row-reverse;justify-content:flex-end}
+.preview-stage .rcat-dot{width:6px;height:6px;border-radius:50%;background:var(--pri);box-shadow:0 0 8px var(--pri);flex-shrink:0}
+.preview-stage .rcat-h h4{font-family:'Rubik',sans-serif;font-weight:700;font-size:15px;color:#F0F6FF}
+.preview-stage .rcat ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+.preview-stage .rcat li{font-size:14px;line-height:1.5;color:rgba(240,246,255,.88);font-weight:400;padding-right:14px;position:relative}
+.preview-stage .rcat li::before{content:'';position:absolute;right:0;top:7px;width:5px;height:5px;
+  border-top:1.5px solid var(--pri);border-left:1.5px solid var(--pri);transform:rotate(135deg)}
+.preview-stage .risk-ico{display:block;margin-bottom:11px;color:var(--pri)}
+.preview-stage .vision-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%}
+.preview-stage .vcard{padding:22px 20px;border-radius:16px;text-align:right;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)}
+.preview-stage .vcard-ico{font-size:26px;margin-bottom:11px;display:block}
+.preview-stage .vcard-t{font-family:'Rubik',sans-serif;font-weight:700;font-size:17px;color:#F0F6FF;margin-bottom:8px}
+.preview-stage .vcard-d{font-size:14.5px;line-height:1.6;color:rgba(240,246,255,.88);font-weight:400}
+.preview-stage .fnd-lede{font-size:15px;line-height:1.65;color:rgba(240,246,255,.88);font-weight:400;
+  max-width:800px;margin:0 auto 22px;padding:14px 18px;
+  border:1px solid rgba(var(--pri-r),var(--pri-g),var(--pri-b),.2);
+  border-radius:12px;background:rgba(var(--pri-r),var(--pri-g),var(--pri-b),.06)}
+.preview-stage .fnd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%}
+.preview-stage .fnd-card{padding:18px 18px 16px;border-radius:14px;text-align:right;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)}
+.preview-stage .fnd-n{font-family:'Space Mono',monospace;font-size:11px;color:var(--pri);letter-spacing:.1em;margin-bottom:8px;display:block}
+.preview-stage .fnd-t{font-family:'Rubik',sans-serif;font-weight:700;font-size:17px;color:#F0F6FF;margin-bottom:10px}
+.preview-stage .fnd-items{list-style:none;display:flex;flex-direction:column;gap:6px}
+.preview-stage .fnd-items li{font-size:14px;line-height:1.5;color:rgba(240,246,255,.88);font-weight:400;padding-right:14px;position:relative}
+.preview-stage .fnd-items li::before{content:'';position:absolute;right:0;top:7px;width:5px;height:5px;
+  border-top:1.5px solid var(--pri);border-left:1.5px solid var(--pri);transform:rotate(135deg);opacity:.7}
+.preview-stage .sum-quote{font-family:'Rubik',sans-serif;font-weight:700;font-size:clamp(17px,2.3vw,24px);
+  line-height:1.55;color:#F0F6FF;max-width:780px;text-align:center;margin:0 auto 24px;
+  padding:20px 28px;border-radius:16px;
+  background:rgba(var(--pri-r),var(--pri-g),var(--pri-b),.08);
+  border:1px solid rgba(var(--pri-r),var(--pri-g),var(--pri-b),.25)}
+.preview-stage .sum-quote span{color:var(--pri)}
+.preview-stage .sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%}
+.preview-stage .sum-item{padding:16px 18px;border-radius:12px;text-align:right;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09)}
+.preview-stage .sum-item-n{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--pri);letter-spacing:.12em;margin-bottom:6px;display:block}
+.preview-stage .sum-item-t{font-size:14.5px;color:rgba(240,246,255,.88);font-weight:400;line-height:1.55}
+.preview-stage .cb4-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:860px}
+.preview-stage .cb4-lbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.22em;
+  color:rgba(var(--pri-r),var(--pri-g),var(--pri-b),.5);text-align:center}
+.preview-stage .cb4-row{display:flex;gap:14px;justify-content:center;width:100%}
+.preview-stage .cb4-box{padding:15px 22px;border-radius:14px;
+  border:1px solid rgba(var(--pri-r),var(--pri-g),var(--pri-b),.28);
+  background:rgba(var(--pri-r),var(--pri-g),var(--pri-b),.09);
+  font-family:'Rubik',sans-serif;font-weight:700;font-size:16px;color:#F0F6FF;
+  min-width:190px;text-align:center}
+.preview-stage .cb4-sub{font-family:'Heebo',sans-serif;font-size:12.5px;font-weight:300;color:rgba(240,246,255,.88);margin-top:5px}
+.preview-stage .cb4-f2{border-color:rgba(var(--sec-r),var(--sec-g),var(--sec-b),.28);background:rgba(var(--sec-r),var(--sec-g),var(--sec-b),.09)}
+.preview-stage .cb4-v1{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.08);min-width:220px}
+.preview-stage .cb4-v2{min-width:220px}
+.preview-stage .cb4-out{min-width:460px;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.16)}
+.preview-stage .cb4-arrow{color:rgba(var(--pri-r),var(--pri-g),var(--pri-b),.45);font-size:22px;line-height:1}
+
+@media(max-width:700px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .field-row{grid-template-columns:1fr}
+  .preview-pane{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div>
+    <div class="topbar-logo">עורך תוכן · וקטור על</div>
+    <div class="topbar-sub">VECTOR CONTENT EDITOR</div>
+  </div>
+  <div class="topbar-sep"></div>
+  <button class="btn" onclick="switchTab('import')" id="tabImport">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+    טעינה
+  </button>
+  <button class="btn" onclick="switchTab('edit')" id="tabEdit">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    עריכה
+  </button>
+  <button class="btn" onclick="switchTab('themes')" id="tabThemes">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 010 20"/><path d="M2 12h20"/></svg>
+    צבעים
+  </button>
+  <button class="btn btn-grn" onclick="switchTab('export')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+    יצוא
+  </button>
+</header>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-hd">
+    <h3>שקפים</h3>
+    <div id="slideCount" style="font-size:12px;color:var(--muted)">—</div>
+  </div>
+  <div class="slide-list" id="slideList"></div>
+  <div class="sidebar-foot">
+    <button class="btn btn-sm" onclick="addSlide()" style="flex:1">+ שקף חדש</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="main-tabs">
+    <!-- tabs are driven by topbar buttons, this is just a spacer if needed -->
+  </div>
+  <div class="main-content">
+
+    <!-- IMPORT -->
+    <div class="panel active" id="panelImport">
+      <div class="import-wrap">
+        <h2>טעינת קובץ תוכן</h2>
+        <p>הדבק את תוכן קובץ <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-family:var(--mono)">data.js</code> בתיבה למטה ולחץ <strong>טען</strong>. ניתן גם לגרור ולשחרר את הקובץ לתוך הדף.</p>
+        <div id="importNotice" class="notice"></div>
+        <textarea class="code-area" id="importCode" placeholder="הדבק כאן את תוכן data.js ..."></textarea>
+        <div class="import-actions">
+          <button class="btn btn-pri" onclick="loadData()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            טען
+          </button>
+          <button class="btn" onclick="loadSample()">טען דוגמה</button>
+          <button class="btn btn-red" onclick="clearImport()">נקה</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDIT (split: edit-pane + preview-pane) -->
+    <div class="panel" id="panelEdit">
+      <!-- LEFT: editor form -->
+      <div class="edit-pane">
+        <div class="editor-empty" id="editorEmpty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          <div style="font-size:15px;font-weight:600;margin-bottom:6px">אין שקף נבחר</div>
+          <div style="font-size:13px">בחר שקף מהרשימה משמאל, או טען קובץ תחילה</div>
+        </div>
+        <div class="stage-editor" id="stageEditor" style="display:none"></div>
+      </div>
+      <!-- RIGHT: live preview -->
+      <div class="preview-pane">
+        <div class="preview-header">תצוגה מקדימה</div>
+        <div class="preview-viewport" id="previewViewport">
+          <!-- scaled slide renders here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- THEMES -->
+    <div class="panel" id="panelThemes">
+      <h2 style="font-family:var(--head);font-weight:700;font-size:20px;margin-bottom:6px">ערכות צבע</h2>
+      <p style="color:var(--dim);margin-bottom:20px;line-height:1.6">כל שקף מקבל ערכת צבע לפי המיקום שלו ברשימה (שקף 1 ← ערכה 1). ניתן לשנות צבעים ישירות כאן.</p>
+      <div class="themes-grid" id="themesGrid"></div>
+    </div>
+
+    <!-- EXPORT -->
+    <div class="panel" id="panelExport">
+      <div class="export-wrap">
+        <h2>יצוא קובץ תוכן</h2>
+        <p>הקוד שנוצר מחליף את <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-family:var(--mono)">data.js</code>. העתק אותו והחלף את תוכן הקובץ בתיקייה.</p>
+        <div class="copy-btn-wrap">
+          <button class="btn btn-pri" onclick="copyExport()" style="margin-bottom:12px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            העתק הכל
+          </button>
+          <span class="copy-feedback" id="copyFeedback">✓ הועתק!</span>
+        </div>
+        <textarea class="export-code" id="exportCode" readonly spellcheck="false" onclick="this.select()"></textarea>
+      </div>
+    </div>
+
+  </div><!-- /.main-content -->
+</main>
+
+</div>
+<div id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+let STAGES = [];
+let T = [];
+let curIdx = -1;
+let loaded = false;
+
+/* ══════════════════════════════════════════════
+   TAB ROUTING
+══════════════════════════════════════════════ */
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+  if (name === 'export') renderExport();
+  if (name === 'themes') renderThemes();
+  if (name === 'edit' && curIdx >= 0) renderEditor(curIdx);
+}
+
+/* ══════════════════════════════════════════════
+   IMPORT / LOAD
+══════════════════════════════════════════════ */
+function showNotice(msg, type) {
+  const n = document.getElementById('importNotice');
+  n.className = 'notice ' + type;
+  n.innerHTML = msg;
+  n.style.display = 'flex';
+}
+
+function loadData() {
+  const code = document.getElementById('importCode').value.trim();
+  if (!code) { showNotice('הדבק תוכן לפני הטעינה.', 'error'); return; }
+  try {
+    const fn = new Function(code + '\nreturn {T, STAGES};');
+    const res = fn();
+    if (!Array.isArray(res.STAGES) || !Array.isArray(res.T)) throw new Error('לא נמצאו T ו-STAGES');
+    T = JSON.parse(JSON.stringify(res.T));
+    STAGES = JSON.parse(JSON.stringify(res.STAGES));
+    loaded = true;
+    showNotice('✓ נטענו ' + STAGES.length + ' שקפים בהצלחה', 'success');
+    renderSidebar();
+    switchTab('edit');
+    toast('נטען בהצלחה — בחר שקף לעריכה');
+  } catch(e) {
+    showNotice('שגיאה בפענוח הקובץ: ' + e.message, 'error');
+  }
+}
+
+function clearImport() {
+  document.getElementById('importCode').value = '';
+  document.getElementById('importNotice').style.display = 'none';
+}
+
+function loadSample() {
+  document.getElementById('importCode').value = `const T=[
+  {pri:'#60A5FA',sec:'#A78BFA',pr:[96,165,250],sr:[167,139,250],bg:'#030610'},
+  {pri:'#34D399',sec:'#60A5FA',pr:[52,211,153],sr:[96,165,250],bg:'#011510'},
+];
+const STAGES=[
+  {type:'cine',short:'פתיחה'},
+  {type:'vision',kicker:'VISION · 01',short:'חזון',title:'תמונת המצב',sub:'תיאור קצר',
+    items:[{ico:'🎯',t:'כותרת',d:'תיאור'}]},
+];`;
+  showNotice('דוגמה הוכנסה — לחץ טען.', 'info');
+}
+
+/* drag & drop file */
+document.body.addEventListener('dragover', e => { e.preventDefault(); document.getElementById('importCode').classList.add('drag-over'); });
+document.body.addEventListener('dragleave', () => document.getElementById('importCode').classList.remove('drag-over'));
+document.body.addEventListener('drop', e => {
+  e.preventDefault();
+  document.getElementById('importCode').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('importCode').value = ev.target.result; showNotice('הקובץ נקרא — לחץ טען.', 'info'); };
+  reader.readAsText(file);
+});
+
+/* ══════════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════════ */
+const TYPE_LABELS = {cine:'פתיחה',vision:'ויז\'ן',arch:'ארכ\'',foundation:'יסוד',hero:'גיבור',cards:'כרטיסיות',pipe:'צינור',rec:'המלצות',risk:'סיכונים',summary:'סיכום'};
+
+function renderSidebar() {
+  const list = document.getElementById('slideList');
+  list.innerHTML = '';
+  STAGES.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'slide-item' + (i === curIdx ? ' active' : '');
+    el.id = 'si' + i;
+    el.innerHTML = `<span class="slide-num">${String(i+1).padStart(2,'0')}</span>
+      <span class="slide-name">${s.short || s.title || s.type}</span>
+      <span class="slide-type">${TYPE_LABELS[s.type] || s.type}</span>`;
+    el.onclick = () => { selectSlide(i); };
+    list.appendChild(el);
+  });
+  document.getElementById('slideCount').textContent = STAGES.length + ' שקפים';
+}
+
+function selectSlide(i) {
+  curIdx = i;
+  renderSidebar();
+  switchTab('edit');
+  renderEditor(i);
+}
+
+/* ══════════════════════════════════════════════
+   EDITOR
+══════════════════════════════════════════════ */
+function renderEditor(i) {
+  const s = STAGES[i];
+  if (!s) return;
+  document.getElementById('editorEmpty').style.display = 'none';
+  const el = document.getElementById('stageEditor');
+  el.style.display = 'block';
+  const type = s.type;
+
+  let html = `<div class="stage-header">
+    <h2>${s.short || s.title || 'שקף ' + (i+1)}</h2>
+    <span class="type-badge">${type.toUpperCase()}</span>
+    <button class="btn btn-red btn-sm" onclick="deleteSlide(${i})">מחק שקף</button>
+  </div>`;
+
+  /* common fields */
+  html += `<div class="section-box">
+    <div class="section-box-head" onclick="toggleBox(this)"><h4>שדות כלליים</h4><span class="toggle-icon">▾</span></div>
+    <div class="section-box-body">
+      <div class="field-row">
+        <div><label>TYPE (סוג שקף)</label>
+          <select onchange="setField(${i},'type',this.value);renderEditor(${i})">
+            ${['cine','vision','arch','foundation','hero','cards','pipe','rec','risk','summary'].map(t=>`<option value="${t}"${type===t?' selected':''}>${t}</option>`).join('')}
+          </select></div>
+        <div><label>SHORT (שם קצר בסרגל)</label>
+          <input type="text" value="${esc(s.short||'')}" oninput="setField(${i},'short',this.value);updateSidebarItem(${i})"></div>
+      </div>`;
+
+  if (type !== 'cine') {
+    html += `<div class="field-row">
+      <div><label>KICKER (תג עליון)</label>
+        <input type="text" value="${esc(s.kicker||'')}" oninput="setField(${i},'kicker',this.value)"></div>
+      <div><label>TITLE (כותרת)</label>
+        <input type="text" value="${esc(s.title||'')}" oninput="setField(${i},'title',this.value);updateSidebarItem(${i})"></div>
+    </div>
+    <div class="field-row full"><div><label>SUB (תת-כותרת)</label>
+      <textarea oninput="setField(${i},'sub',this.value)">${esc(s.sub||'')}</textarea></div></div>`;
+  }
+  html += `</div></div>`;
+
+  /* type-specific */
+  if (type === 'cine') {
+    html += `<div class="section-box">
+      <div class="section-box-head" onclick="toggleBox(this)"><h4>🎬 Beat 1 — פתיח</h4><span class="toggle-icon">▾</span></div>
+      <div class="section-box-body">
+        <div class="field-row full"><div><label>TAG (שורה עליונה קטנה)</label>
+          <input type="text" value="${esc(s.cb1_tag||'')}" oninput="setField(${i},'cb1_tag',this.value)"></div></div>
+        <div class="field-row full"><div><label>LINE (שורת טקסט — שורה חדשה עם Enter)</label>
+          <textarea rows="3" oninput="setField(${i},'cb1_line',this.value)">${esc(s.cb1_line||'')}</textarea></div></div>
+      </div></div>
+    <div class="section-box">
+      <div class="section-box-head" onclick="toggleBox(this)"><h4>✨ Beat 2 — מילה גדולה</h4><span class="toggle-icon">▾</span></div>
+      <div class="section-box-body">
+        <div class="field-row full"><div><label>WORD (הטקסט הגדול באמצע)</label>
+          <input type="text" value="${esc(s.cb2_word||'')}" oninput="setField(${i},'cb2_word',this.value)"></div></div>
+      </div></div>
+    <div class="section-box">
+      <div class="section-box-head" onclick="toggleBox(this)"><h4>🚀 Beat 3 — שם הפרויקט</h4><span class="toggle-icon">▾</span></div>
+      <div class="section-box-body">
+        <div class="field-row full"><div><label>BIG (כותרת ענק)</label>
+          <input type="text" value="${esc(s.cb3_big||'')}" oninput="setField(${i},'cb3_big',this.value)"></div></div>
+        <div class="field-row full"><div><label>SUB (תיאור תחת הכותרת — שורה חדשה עם Enter)</label>
+          <textarea rows="3" oninput="setField(${i},'cb3_sub',this.value)">${esc(s.cb3_sub||'')}</textarea></div></div>
+      </div></div>
+    <div class="notice info" style="display:flex;margin-top:14px">Beat 4 (דיאגרמת הארכיטקטורה) נגזר אוטומטית משמות השקפים האחרים.</div>`;
+  }
+
+  if (type === 'vision') html += renderItemsEditor(i, s.items||[], 'items', ['ico','t','d'], ['אמוג\'י','כותרת','תיאור'], true);
+  if (type === 'foundation') {
+    html += `<div class="section-box"><div class="section-box-head" onclick="toggleBox(this)"><h4>לידה (LEDE)</h4><span class="toggle-icon">▾</span></div>
+      <div class="section-box-body"><div class="field-row full"><div><label>טקסט מוביל</label>
+      <textarea rows="3" oninput="setField(${i},'lede',this.value)">${esc(s.lede||'')}</textarea></div></div></div></div>`;
+    html += renderFoundationItems(i, s.items||[]);
+  }
+  if (type === 'hero') {
+    html += `<div class="section-box"><div class="section-box-head" onclick="toggleBox(this)"><h4>תוכן</h4><span class="toggle-icon">▾</span></div>
+      <div class="section-box-body">
+      <div class="field-row full"><div><label>MISSION (משפט המשימה)</label>
+        <textarea rows="3" oninput="setField(${i},'mission',this.value)">${esc(s.mission||'')}</textarea></div></div>
+      <label>CHIPS (תגיות — HTML מותר)</label>
+      <div class="chips-list" id="chips-${i}">${renderChips(i, s.chips||[])}</div>
+      <button class="btn btn-sm" style="margin-top:6px" onclick="addChip(${i})">+ תגית</button>
+      </div></div>`;
+  }
+  if (type === 'cards' || type === 'risk') {
+    html += `<div class="section-box"><div class="section-box-head" onclick="toggleBox(this)"><h4>הגדרות תצוגה</h4><span class="toggle-icon">▾</span></div>
+      <div class="section-box-body"><div class="field-row">
+        <div><label>COLS (עמודות)</label>
+          <select onchange="setField(${i},'cols',this.value)">
+            ${['c2','c3','c4'].map(c=>`<option value="${c}"${(s.cols||'c2')===c?' selected':''}>${c}</option>`).join('')}
+          </select></div>
+        <div><label>LAST2COL (פריט אחרון ברוחב מלא)</label>
+          <select onchange="setField(${i},'last2col',this.value==='true')">
+            <option value="false"${!s.last2col?' selected':''}>לא</option>
+            <option value="true"${s.last2col?' selected':''}>כן</option>
+          </select></div>
+      </div></div></div>`;
+    html += renderStringArrayEditor(i, s.items||[], 'items', 'פריטי תוכן');
+  }
+  if (type === 'pipe') html += renderItemsEditor(i, s.items||[], 'items', ['n','d'], ['שם שלב','תיאור'], false);
+  if (type === 'rec') html += renderRecCats(i, s.cats||[]);
+  if (type === 'arch' || type === 'summary') {
+    html += `<div class="notice info" style="display:flex">השקף הזה מייצג את הארכיטקטורה הכוללת — הכפתורים שלו מנווטים לשקפים לפי ה-short שלהם.</div>`;
+  }
+
+  html += `<div style="margin-top:24px;display:flex;gap:10px">
+    <button class="btn" onclick="moveSlide(${i},-1)" ${i===0?'disabled':''}>↑ הזז למעלה</button>
+    <button class="btn" onclick="moveSlide(${i},1)" ${i===STAGES.length-1?'disabled':''}>↓ הזז למטה</button>
+    <button class="btn" onclick="duplicateSlide(${i})">שכפל שקף</button>
+  </div>`;
+
+  el.innerHTML = html;
+
+  /* hook live preview */
+  renderPreview();
+  const se = document.getElementById('stageEditor');
+  if (se._previewHandler) {
+    se.removeEventListener('input', se._previewHandler);
+    se.removeEventListener('change', se._previewHandler);
+  }
+  se._previewHandler = debounce(renderPreview, 200);
+  se.addEventListener('input', se._previewHandler);
+  se.addEventListener('change', se._previewHandler);
+}
+
+/* ── field helpers ── */
+function setField(i, key, val) { STAGES[i][key] = val; }
+function setNestedField(i, arr, j, key, val) { STAGES[i][arr][j][key] = val; }
+function setArrayItem(i, arr, j, val) { STAGES[i][arr][j] = val; }
+function updateSidebarItem(i) {
+  const s = STAGES[i];
+  const el = document.getElementById('si' + i);
+  if (el) el.querySelector('.slide-name').textContent = s.short || s.title || s.type;
+}
+
+/* ── toggleBox ── */
+function toggleBox(hd) { hd.closest('.section-box').classList.toggle('collapsed'); }
+
+/* ── items editor (vision / pipe) ── */
+function renderItemsEditor(idx, items, arrKey, keys, labels, withEmo) {
+  let html = `<div class="section-box"><div class="section-box-head" onclick="toggleBox(this)"><h4>פריטים (${items.length})</h4><span class="toggle-icon">▾</span></div>
+  <div class="section-box-body">
+  <div class="array-items" id="arr-${idx}-${arrKey}">`;
+  items.forEach((it, j) => {
+    const preview = it[keys[withEmo?1:0]] || '';
+    html += `<div class="array-item" id="ai-${idx}-${arrKey}-${j}">
+      <div class="array-item-head">
+        <span class="array-item-num">${String(j+1).padStart(2,'0')}</span>
+        <span class="array-item-preview">${esc(preview)}</span>
+        <button class="btn btn-sm btn-red" onclick="removeItem(${idx},'${arrKey}',${j})">✕</button>
+      </div>
+      <div class="array-item-body">`;
+    keys.forEach((k, ki) => {
+      html += `<div><label>${labels[ki]}</label>
+        <input type="text" value="${esc(it[k]||'')}" oninput="setNestedField(${idx},'${arrKey}',${j},'${k}',this.value)"></div>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `</div>
+  <button class="btn btn-sm" style="margin-top:8px" onclick="addItem(${idx},'${arrKey}')">+ פריט</button>
+  </div></div>`;
+  return html;
+}
+
+/* ── foundation items editor ── */
+function renderFoundationItems(idx, items) {
+  let html = `<div class="section-box"><div class="section-box-head" onclick="toggleBox(this)"><h4>קטגוריות (${items.length})</h4><span class="toggle-icon">▾</span></div>
+  <div class="section-box-body"><div class="array-items">`;
+  items.forEach((it, j) => {
+    html += `<div class="array-item">
+      <div class="array-item-head">
+        <span class="array-item-num">${it.n||String(j+1).padStart(2,'0')}</span>
+        <span class="array-item-preview">${esc(it.t||'')}</span>
+        <button class="btn btn-sm btn-red" onclick="removeItem(${idx},'items',${j})">✕</button>
+      </div>
+      <div class="array-item-body">
+        <div><label>מספר</label><input type="text" value="${esc(it.n||'')}" oninput="setNestedField(${idx},'items',${j},'n',this.value)"></div>
+        <div><label>כותרת</label><input type="text" value="${esc(it.t||'')}" oninput="setNestedField(${idx},'items',${j},'t',this.value)"></div>
+        <label>רשימת פריטים</label>
+        <div class="sub-list" id="subl-${idx}-${j}">`;
+    (it.li||[]).forEach((li, li_j) => {
+      html += `<div class="sub-list-item">
+        <input type="text" value="${esc(li)}" oninput="setSubListItem(${idx},${j},${li_j},this.value)">
+        <button class="btn btn-sm btn-red" onclick="removeSubListItem(${idx},${j},${li_j})">✕</button>
+      </div>`;
+    });
+    html += `</div>
+        <button class="btn btn-sm" onclick="addSubListItem(${idx},${j})" style="margin-top:4px">+ שורה</button>
+      </div></div>`;
+  });
+  html += `</div><button class="btn btn-sm" style="margin-top:8px" onclick="addFoundationItem(${idx})">+ קטגוריה</button></div></div>`;
+  return html;
+}
+
+/* ── rec cats editor ── */
+function renderRecCats(idx, cats) {
+  let html = `<div class="section-box"><div class="section-box-head" onclick="toggleBox(this)"><h4>קטגוריות המלצות (${cats.length})</h4><span class="toggle-icon">▾</span></div>
+  <div class="section-box-body"><div class="array-items">`;
+  cats.forEach((c, j) => {
+    html += `<div class="array-item">
+      <div class="array-item-head">
+        <span class="array-item-num">${String(j+1).padStart(2,'0')}</span>
+        <span class="array-item-preview">${esc(c.h||'')}</span>
+        <button class="btn btn-sm btn-red" onclick="removeCat(${idx},${j})">✕</button>
+      </div>
+      <div class="array-item-body">
+        <div><label>כותרת</label><input type="text" value="${esc(c.h||'')}" oninput="STAGES[${idx}].cats[${j}].h=this.value"></div>
+        <label>פריטים</label>
+        <div class="sub-list">`;
+    (c.li||[]).forEach((li, li_j) => {
+      html += `<div class="sub-list-item">
+        <input type="text" value="${esc(li)}" oninput="setCatItem(${idx},${j},${li_j},this.value)">
+        <button class="btn btn-sm btn-red" onclick="removeCatItem(${idx},${j},${li_j})">✕</button>
+      </div>`;
+    });
+    html += `</div>
+        <button class="btn btn-sm" onclick="addCatItem(${idx},${j})" style="margin-top:4px">+ שורה</button>
+      </div></div>`;
+  });
+  html += `</div><button class="btn btn-sm" style="margin-top:8px" onclick="addCat(${idx})">+ קטגוריה</button></div></div>`;
+  return html;
+}
+
+/* ── string array editor (cards/risk items) ── */
+function renderStringArrayEditor(idx, items, arrKey, title) {
+  let html = `<div class="section-box"><div class="section-box-head" onclick="toggleBox(this)"><h4>${title} (${items.length})</h4><span class="toggle-icon">▾</span></div>
+  <div class="section-box-body"><div class="array-items">`;
+  items.forEach((it, j) => {
+    html += `<div class="array-item" style="border:none;background:transparent">
+      <div class="array-item-head" style="background:transparent;padding:0;gap:6px">
+        <span class="array-item-num" style="min-width:26px">${String(j+1).padStart(2,'0')}</span>
+        <textarea style="flex:1;min-height:48px" oninput="setArrayItem(${idx},'${arrKey}',${j},this.value)">${esc(it)}</textarea>
+        <button class="btn btn-sm btn-red" onclick="removeItem(${idx},'${arrKey}',${j})">✕</button>
+      </div></div>`;
+  });
+  html += `</div><button class="btn btn-sm" style="margin-top:8px" onclick="addStringItem(${idx},'${arrKey}')">+ פריט</button></div></div>`;
+  return html;
+}
+
+/* ── chips ── */
+function renderChips(idx, chips) {
+  return chips.map((c, j) => `<div class="chip-row">
+    <input type="text" value="${esc(c)}" oninput="STAGES[${idx}].chips[${j}]=this.value">
+    <button class="btn btn-sm btn-red" onclick="removeChip(${idx},${j})">✕</button>
+  </div>`).join('');
+}
+
+/* ── CRUD helpers ── */
+function removeItem(i, arr, j) { STAGES[i][arr].splice(j,1); renderEditor(i); }
+function addItem(i, arr) { STAGES[i][arr] = STAGES[i][arr]||[]; STAGES[i][arr].push({ico:'',t:'',d:''}); renderEditor(i); }
+function addStringItem(i, arr) { STAGES[i][arr] = STAGES[i][arr]||[]; STAGES[i][arr].push(''); renderEditor(i); }
+function setSubListItem(i, j, li_j, val) { STAGES[i].items[j].li[li_j] = val; }
+function removeSubListItem(i, j, li_j) { STAGES[i].items[j].li.splice(li_j,1); renderEditor(i); }
+function addSubListItem(i, j) { STAGES[i].items[j].li = STAGES[i].items[j].li||[]; STAGES[i].items[j].li.push(''); renderEditor(i); }
+function addFoundationItem(i) { STAGES[i].items = STAGES[i].items||[]; STAGES[i].items.push({n:String(STAGES[i].items.length+1).padStart(2,'0'),t:'',li:[]}); renderEditor(i); }
+function setCatItem(i, j, li_j, val) { STAGES[i].cats[j].li[li_j] = val; }
+function removeCatItem(i, j, li_j) { STAGES[i].cats[j].li.splice(li_j,1); renderEditor(i); }
+function addCatItem(i, j) { STAGES[i].cats[j].li.push(''); renderEditor(i); }
+function removeCat(i, j) { STAGES[i].cats.splice(j,1); renderEditor(i); }
+function addCat(i) { STAGES[i].cats = STAGES[i].cats||[]; STAGES[i].cats.push({h:'',li:[]}); renderEditor(i); }
+function addChip(i) { STAGES[i].chips = STAGES[i].chips||[]; STAGES[i].chips.push(''); renderEditor(i); }
+function removeChip(i, j) { STAGES[i].chips.splice(j,1); renderEditor(i); }
+
+/* ── slide management ── */
+function addSlide() {
+  STAGES.push({type:'cards',short:'שקף חדש',kicker:'',title:'כותרת חדשה',sub:'',cols:'c2',items:[]});
+  curIdx = STAGES.length - 1;
+  renderSidebar();
+  renderEditor(curIdx);
+  toast('שקף חדש נוסף');
+}
+
+function deleteSlide(i) {
+  if (!confirm('למחוק את השקף הזה?')) return;
+  STAGES.splice(i, 1);
+  curIdx = Math.min(i, STAGES.length-1);
+  renderSidebar();
+  if (STAGES.length > 0) renderEditor(curIdx);
+  else { document.getElementById('stageEditor').style.display='none'; document.getElementById('editorEmpty').style.display='block'; }
+  toast('שקף נמחק');
+}
+
+function moveSlide(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= STAGES.length) return;
+  [STAGES[i], STAGES[j]] = [STAGES[j], STAGES[i]];
+  curIdx = j;
+  renderSidebar();
+  renderEditor(curIdx);
+}
+
+function duplicateSlide(i) {
+  STAGES.splice(i+1, 0, JSON.parse(JSON.stringify(STAGES[i])));
+  curIdx = i + 1;
+  renderSidebar();
+  renderEditor(curIdx);
+  toast('שקף שוכפל');
+}
+
+/* ══════════════════════════════════════════════
+   LIVE PREVIEW
+══════════════════════════════════════════════ */
+const warnSvg = `<svg class="risk-ico" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.3L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.3a2 2 0 00-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>`;
+
+function renderPreview() {
+  if (curIdx < 0 || !STAGES[curIdx]) return;
+  const s = STAGES[curIdx];
+  const t = T[curIdx] || T[0] || {pri:'#60A5FA',sec:'#A78BFA',pr:[96,165,250],sr:[167,139,250],bg:'#030610'};
+
+  const vp = document.getElementById('previewViewport');
+  if (!vp) return;
+
+  // Set viewport background
+  vp.style.background = t.bg || '#030610';
+
+  // Get or create preview-stage
+  let stage = vp.querySelector('.preview-stage');
+  if (!stage) {
+    stage = document.createElement('div');
+    stage.className = 'preview-stage';
+    vp.appendChild(stage);
+  }
+
+  // Apply CSS variables as inline style
+  const pr = t.pr || [96,165,250];
+  const sr = t.sr || [167,139,250];
+  stage.style.cssText = [
+    `--pri:${t.pri || '#60A5FA'}`,
+    `--sec:${t.sec || '#A78BFA'}`,
+    `--pri-r:${pr[0]}`,
+    `--pri-g:${pr[1]}`,
+    `--pri-b:${pr[2]}`,
+    `--sec-r:${sr[0]}`,
+    `--sec-g:${sr[1]}`,
+    `--sec-b:${sr[2]}`,
+    `--bg:${t.bg || '#030610'}`,
+    `--ink:#F0F6FF`,
+    `position:absolute`,
+    `top:0`,
+    `left:0`,
+    `width:1100px`,
+    `height:700px`,
+    `background:${t.bg || '#030610'}`,
+    `color:#F0F6FF`,
+    `font-family:'Heebo',sans-serif`,
+    `display:flex`,
+    `flex-direction:column`,
+    `align-items:center`,
+    `justify-content:center`,
+    `text-align:center`,
+    `padding:40px 48px`,
+    `overflow:hidden`,
+    `transform-origin:top left`,
+  ].join(';');
+
+  // eyebrow helper
+  const ew = s.kicker ? `<div class="eyebrow">${s.kicker}</div>` : '';
+
+  let inner = '';
+  const type = s.type;
+
+  if (type === 'cine') {
+    const _ln = t => (t||'').replace(/\n/g,'<br>');
+    inner = `<div style="text-align:center">
+  <div style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.35em;color:var(--pri);margin-bottom:16px">${s.cb1_tag||'OFEK 324 · AI STRATEGY · 2026'}</div>
+  <div style="font-size:22px;color:rgba(240,246,255,.95);line-height:1.6">${_ln(s.cb1_line)||'בחיל האוויר, מידע הוא כוח.<br>אבל המידע מרובה, מפוצל, ולא תמיד נגיש.'}</div>
+  <div style="font-family:'Rubik',sans-serif;font-weight:900;font-size:72px;color:var(--pri);margin-top:24px">${s.cb3_big||'וקטור על'}</div>
+  <div style="font-size:18px;color:rgba(240,246,255,.78);margin-top:12px;line-height:1.5">${_ln(s.cb3_sub)||''}</div>
+</div>`;
+  } else if (type === 'vision') {
+    const cards = (s.items||[]).map(it =>
+      `<div class="vcard"><span class="vcard-ico">${it.ico||''}</span><div class="vcard-t">${it.t||''}</div><div class="vcard-d">${it.d||''}</div></div>`
+    ).join('');
+    inner = `${ew}<h2 class="ttl">${s.title||''}</h2><p class="sub">${s.sub||''}</p><div class="vision-grid">${cards}</div>`;
+  } else if (type === 'arch') {
+    inner = `${ew}<h2 class="ttl">${s.title||''}</h2><p class="sub">${s.sub||''}</p>
+<div class="cb4-wrap">
+  <div class="cb4-lbl">שכבות יסוד</div>
+  <div class="cb4-row">
+    <div class="cb4-box">🗄 מארג מידע חילי<div class="cb4-sub">DATA FABRIC</div></div>
+    <div class="cb4-box cb4-f2">⚙️ תשתית מאפשרת<div class="cb4-sub">ENABLING INFRA</div></div>
+  </div>
+  <div class="cb4-arrow">↓</div>
+  <div class="cb4-lbl">וקטורים</div>
+  <div class="cb4-row">
+    <div class="cb4-box cb4-v1">🎯 וקטור 1<div class="cb4-sub">מבצעיות מבוססת AI</div></div>
+    <div class="cb4-box cb4-v2">💻 וקטור 2<div class="cb4-sub">רבולוציה במחזור פיתוח</div></div>
+  </div>
+  <div class="cb4-arrow">↓</div>
+  <div class="cb4-row"><div class="cb4-box cb4-out">✨ תוצאה עסקית<div class="cb4-sub">אפקטיביות · יעילות · עוצמה · מהירות</div></div></div>
+</div>`;
+  } else if (type === 'foundation') {
+    const cards = (s.items||[]).map(it =>
+      `<div class="fnd-card"><span class="fnd-n">${it.n||''}</span><div class="fnd-t">${it.t||''}</div>
+<ul class="fnd-items">${(it.li||[]).map(x=>`<li>${x}</li>`).join('')}</ul></div>`
+    ).join('');
+    inner = `${ew}<h2 class="ttl">${s.title||''}</h2><p class="sub">${s.sub||''}</p>
+<div class="fnd-lede">${s.lede||''}</div>
+<div class="fnd-grid">${cards}</div>`;
+  } else if (type === 'hero') {
+    inner = `${ew}<h1 class="ttl hero-ttl">${s.title||'רבולוציה במחזור פיתוח ה-<span class="hi">תוכנה</span>'}</h1>
+<div class="msn"><span class="msn-tag">וקטור 2</span><p class="msn-txt">${s.mission||''}</p></div>
+<div class="chips">${(s.chips||[]).map(c=>`<span class="chip">${c}</span>`).join('')}</div>`;
+  } else if (type === 'cards' || type === 'risk') {
+    const items = (s.items||[]).map((txt, k) => {
+      const sp = s.last2col && k === 4 ? ';grid-column:1/-1' : '';
+      return `<div class="card" style="--i:${k+3}${sp}"><div class="shine"></div>
+${type === 'risk' ? warnSvg : `<span class="cn">${String(k+1).padStart(2,'0')}</span>`}
+<p class="ct">${txt}</p><div class="card-accent"></div></div>`;
+    }).join('');
+    inner = `${ew}<h2 class="ttl">${s.title||''}</h2>
+<p class="sub">${s.sub||''}</p><div class="grid ${s.cols||'c2'}">${items}</div>`;
+  } else if (type === 'pipe') {
+    const steps = (s.items||[]).map((p, k) =>
+      `<div class="ps" style="--pi:${k}">
+<div class="ps-top"><div class="ps-badge">${k+1}</div><div class="ps-conn"></div></div>
+<p class="ps-name">${p.n||''}</p><p class="ps-desc">${p.d||''}</p></div>`
+    ).join('');
+    inner = `${ew}<h2 class="ttl">${s.title||''}</h2>
+<p class="sub">${s.sub||''}</p><div class="pipe">${steps}</div>`;
+  } else if (type === 'rec') {
+    const cats = (s.cats||[]).map((c, k) =>
+      `<div class="rcat">
+<div class="rcat-h"><div class="rcat-dot"></div><h4>${c.h||''}</h4></div>
+<ul>${(c.li||[]).map(x=>`<li>${x}</li>`).join('')}</ul></div>`
+    ).join('');
+    inner = `${ew}<h2 class="ttl">${s.title||''}</h2>
+<p class="sub">${s.sub||''}</p><div class="grid c4">${cats}</div>`;
+  } else if (type === 'summary') {
+    inner = `${ew}<h2 class="ttl">${s.title||''}</h2>
+<div class="sum-quote"><span>אין AI בלי מידע. אין מידע בלי קישוריות.</span><br>מארג המידע הוא התשתית שעליה בונים גם <span>המבצעיות החכמה</span> וגם <span>פיתוח התוכנה החכם</span>.</div>
+<div class="sum-grid">
+<div class="sum-item"><span class="sum-item-n">שכבת יסוד 1</span><div class="sum-item-t">מארג מידע חילי (Data Fabric) — מידע אחוד, נגיש ומקושר לכל מי שצריך</div></div>
+<div class="sum-item"><span class="sum-item-n">שכבת יסוד 2</span><div class="sum-item-t">תשתית מאפשרת — GPU, MCP, אבטחה, MLOps וניטור לכל פעולות ה-AI</div></div>
+<div class="sum-item"><span class="sum-item-n">וקטור 1</span><div class="sum-item-t">מבצעיות מבוססת AI — תובנות, ניטור, תחקור ואוטומציה על גבי מארג המידע</div></div>
+<div class="sum-item"><span class="sum-item-n">וקטור 2</span><div class="sum-item-t">רבולוציה במחזור פיתוח — AI בכל שלב: איפיון, פיתוח, בדיקות, פריסה וניטור</div></div>
+<div class="sum-item"><span class="sum-item-n">יעד</span><div class="sum-item-t">שנתיים לשינוי התרבות, הכלים והתהליכים — עם מדידה ושקיפות לאורך כל הדרך</div></div>
+<div class="sum-item"><span class="sum-item-n">תוצאה עסקית</span><div class="sum-item-t">אפקטיביות מבצעית, יעילות ארגונית, קיצור TTM, איכות ובקרה, מוכנות לעתיד</div></div>
+</div>`;
+  } else {
+    inner = `${ew}<h2 class="ttl">${s.title||s.type}</h2><p class="sub">${s.sub||''}</p>`;
+  }
+
+  stage.innerHTML = inner;
+  scalePreview();
+}
+
+function scalePreview() {
+  const vp = document.getElementById('previewViewport');
+  if (!vp) return;
+  const stage = vp.querySelector('.preview-stage');
+  if (!stage) return;
+  const scale = vp.clientWidth / 1100;
+  stage.style.transform = `scale(${scale})`;
+  // Height: 700 * scale
+  const h = Math.round(700 * scale);
+  vp.style.minHeight = h + 'px';
+}
+
+window.addEventListener('resize', scalePreview);
+
+/* ══════════════════════════════════════════════
+   THEMES EDITOR
+══════════════════════════════════════════════ */
+function renderThemes() {
+  const grid = document.getElementById('themesGrid');
+  grid.innerHTML = '';
+  T.forEach((t, i) => {
+    const card = document.createElement('div');
+    card.className = 'theme-card';
+    card.innerHTML = `<div class="theme-num">ערכה ${i+1} · שקף ${i+1}</div>
+      <div class="theme-swatch">
+        <div class="swatch" id="sw-pri-${i}" style="background:${t.pri}"></div>
+        <div class="swatch" id="sw-sec-${i}" style="background:${t.sec}"></div>
+        <div class="swatch" id="sw-bg-${i}" style="background:${t.bg};border-color:rgba(255,255,255,.25)"></div>
+      </div>
+      <div class="theme-fields">
+        <div class="color-row">
+          <label>PRI</label>
+          <input type="color" value="${t.pri}" oninput="setThemeColor(${i},'pri',this.value)">
+          <input type="text" value="${t.pri}" oninput="setThemeColorText(${i},'pri',this.value)" style="font-family:var(--mono)">
+        </div>
+        <div class="color-row">
+          <label>SEC</label>
+          <input type="color" value="${t.sec}" oninput="setThemeColor(${i},'sec',this.value)">
+          <input type="text" value="${t.sec}" oninput="setThemeColorText(${i},'sec',this.value)" style="font-family:var(--mono)">
+        </div>
+        <div class="color-row">
+          <label>BG</label>
+          <input type="color" value="${t.bg}" oninput="setThemeColor(${i},'bg',this.value)">
+          <input type="text" value="${t.bg}" oninput="setThemeColorText(${i},'bg',this.value)" style="font-family:var(--mono)">
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+  const addBtn = document.createElement('div');
+  addBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;border:1px dashed var(--border2);border-radius:var(--radius);cursor:pointer;min-height:160px;color:var(--muted);transition:all .18s';
+  addBtn.textContent = '+ ערכה חדשה';
+  addBtn.onmouseenter = () => { addBtn.style.borderColor='var(--pri)'; addBtn.style.color='var(--pri)'; };
+  addBtn.onmouseleave = () => { addBtn.style.borderColor='var(--border2)'; addBtn.style.color='var(--muted)'; };
+  addBtn.onclick = () => {
+    T.push({pri:'#60A5FA',sec:'#A78BFA',pr:[96,165,250],sr:[167,139,250],bg:'#030610'});
+    renderThemes();
+  };
+  grid.appendChild(addBtn);
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return [r,g,b];
+}
+function setThemeColor(i, key, val) {
+  T[i][key] = val;
+  if (key === 'pri') T[i].pr = hexToRgb(val);
+  if (key === 'sec') T[i].sr = hexToRgb(val);
+  document.getElementById('sw-' + key + '-' + i).style.background = val;
+  if (i === curIdx) renderPreview();
+}
+function setThemeColorText(i, key, val) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(val)) return;
+  setThemeColor(i, key, val);
+}
+
+/* ══════════════════════════════════════════════
+   EXPORT
+══════════════════════════════════════════════ */
+function renderExport() {
+  const code = buildDataJs();
+  document.getElementById('exportCode').value = code;
+}
+
+function buildDataJs() {
+  const header = `/* ========================================================
+   data.js — קובץ הזנת תוכן לאתר וקטור על
+   נוצר אוטומטית על-ידי עורך התוכן
+   ======================================================== */\n\n`;
+  const tStr = 'const T=' + JSON.stringify(T, null, 2) + ';\n\n';
+  const stagesStr = 'const STAGES=' + JSON.stringify(STAGES, null, 2) + ';\n';
+  return header + tStr + stagesStr;
+}
+
+function copyExport() {
+  renderExport();
+  const ta = document.getElementById('exportCode');
+  ta.select();
+  try {
+    navigator.clipboard.writeText(ta.value).then(() => showCopyFeedback()).catch(() => { document.execCommand('copy'); showCopyFeedback(); });
+  } catch(e) { document.execCommand('copy'); showCopyFeedback(); }
+}
+function showCopyFeedback() {
+  const fb = document.getElementById('copyFeedback');
+  fb.style.display = 'inline';
+  setTimeout(() => fb.style.display = 'none', 2500);
+  toast('הועתק ללוח!');
+}
+
+/* ══════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════ */
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function debounce(fn, ms) {
+  let timer;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), ms);
+  };
+}
+</script>
+</body>
+</html>
