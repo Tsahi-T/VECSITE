@@ -88,6 +88,60 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .flash{animation:flashHl 2.4s var(--eo)}
 @keyframes flashHl{0%{box-shadow:0 0 0 3px rgba(245,158,11,.8);background:rgba(245,158,11,.16);border-radius:8px}
   100%{box-shadow:0 0 0 3px transparent;background:transparent}}
+/* ── מילון מונחים ── */
+.gl{border-bottom:1px dotted rgba(var(--pri-rgb),.75);cursor:help;transition:background .2s;border-radius:2px}
+.gl:hover{background:rgba(var(--pri-rgb),.14)}
+#gtip{position:fixed;z-index:200;max-width:330px;padding:11px 14px;border-radius:12px;pointer-events:none;
+  background:var(--nav-bg);backdrop-filter:blur(18px);border:1px solid rgba(var(--pri-rgb),.45);
+  box-shadow:0 18px 44px -12px rgba(0,0,0,.6);opacity:0;transform:translateY(6px);
+  transition:opacity .18s var(--eo),transform .18s var(--eo)}
+#gtip.on{opacity:1;transform:none}
+#gtip .gt{font-size:12.5px;font-weight:800;color:var(--pri);margin-bottom:4px;direction:ltr;text-align:right}
+#gtip .gd{font-size:12.5px;color:var(--dim);line-height:1.6}
+/* ── מונים מונפשים ── */
+.kstats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:34px}
+.kstat{text-align:center;padding:18px 8px 14px;border-radius:15px;background:var(--card2);
+  border:1px solid var(--line);transition:border-color .3s,transform .3s}
+.kstat:hover{border-color:rgba(var(--pri-rgb),.45);transform:translateY(-3px)}
+.kstat .kn{font-size:clamp(26px,3vw,40px);font-weight:900;line-height:1.1;direction:ltr;
+  background:linear-gradient(120deg,var(--pri),var(--sec));-webkit-background-clip:text;background-clip:text;color:transparent}
+.kstat .kt{font-size:12px;color:var(--dim);margin-top:5px;font-weight:500}
+@media(max-width:860px){.kstats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:560px){.kstats{grid-template-columns:repeat(2,1fr)}}
+/* ── הדפסה ── */
+@media print{
+  body{--ink:#000;--dim:#333;--faint:#666;--line:#c8c8c8;--card:#fff;--card2:#fff;--hov:#fff;
+    background:#fff!important;color:#111}
+  body::before,#bgc,#hdr,#prog,#snav,#pnav,#scrim,#gtip{display:none!important}
+  #main{margin:0!important;padding:0!important}
+  section.sec{display:block!important;height:auto!important;overflow:visible!important;
+    max-width:100%!important;padding:26px 6px!important;page-break-before:always}
+  section.sec:first-of-type{page-break-before:auto}
+  section.sec+section.sec::before{display:none}
+  .rv{opacity:1!important;transform:none!important;transition:none!important;animation:none!important}
+  #hero{min-height:0}
+  #hero h1,.ttl .hi,#summary .closing,#hdr .brand{background:none!important;
+    -webkit-background-clip:initial!important;background-clip:initial!important;
+    color:#000!important;-webkit-text-fill-color:#000!important}
+  .kstat .kn{background:none!important;-webkit-background-clip:initial!important;
+    color:#1a3f7a!important;-webkit-text-fill-color:#1a3f7a!important}
+  .card,.rcat,.iq,details.acc,details.risk,.gaps,.msn,.lv,.arch-box,.kstat{
+    background:#fff!important;box-shadow:none!important;break-inside:avoid}
+  .card::before{opacity:.9}
+  .ps-badge,.lv .n{background:#e4e9f2!important;color:#000!important;box-shadow:none!important}
+  .gaps{background:#fdf6ea!important}
+  .gaps .bottom{color:#8a5200!important;background:#f7ecd8!important}
+  .gaps .lede b{color:#8a5200!important}
+  details.risk{background:#fdf0f0!important}
+  details.risk summary{color:#8f1d1d!important}
+  .risk-b .r{background:#faeaea!important;color:#6e1414!important}
+  .risk-b .a{background:#eaf6ec!important;color:#14501e!important}
+  .risk-pr .chip{color:#8f1d1d!important}
+  .chip{color:#222!important}
+  .gl{border-bottom:none}
+  details>*:not(summary){display:block}
+  a{text-decoration:none;color:inherit}
+}
 #prog{position:fixed;top:var(--hdr-h);right:0;left:0;height:2px;z-index:81;background:transparent}
 #prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#60A5FA,#A78BFA);transition:width .1s linear}
 
@@ -379,6 +433,7 @@ body.present .rv{opacity:1;transform:none;transition:none}
     <div id="sres"></div>
   </div>
   <button class="hbtn" id="themeBtn" title="מעבר בין מצב כהה לבהיר">☀️</button>
+  <button class="hbtn" id="printBtn" title="הדפסה / שמירה כ-PDF">🖨 הדפסה</button>
   <button class="hbtn" id="modeBtn" title="מעבר בין מצב גלילה למצב מצגת">🎬 מצב מצגת</button>
 </header>
 <div id="prog"><i></i></div>
@@ -533,8 +588,14 @@ function renderWorkplan(){
 }
 
 function renderKpis(){
+  const stats=(typeof STATS!=='undefined'&&STATS.length)
+    ?`<div class="kstats rv">${STATS.map(s=>`<div class="kstat">
+        <div class="kn" data-n="${+s.n||0}" data-suffix="${esc(s.suffix||'')}">0</div>
+        <div class="kt">${esc(s.t)}</div></div>`).join('')}</div>`
+    :'';
   return `<section class="sec theme-teal" id="kpis" data-nav="מדדי הצלחה">
     ${secHead(KPIS.kicker,KPIS.title,KPIS.sub)}
+    ${stats}
     <div class="grid g4">${KPIS.cats.map((c,i)=>`<div class="rcat rv" style="transition-delay:${i*80}ms">
       <h4>${c.ico} ${esc(c.h)}</h4><ul>${c.li.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div>
   </section>`;
@@ -652,6 +713,7 @@ function showSlide(n){
   sections.forEach((s,i)=>s.classList.toggle('active',i===cur));
   const act=sections[cur];act.scrollTop=0;
   act.querySelectorAll('.rv').forEach(el=>el.classList.add('in'));
+  if(typeof runCounters==='function')runCounters(act);
   pCur.textContent=String(cur+1).padStart(2,'0');
   pPrev.disabled=cur===0;pNext.disabled=cur===sections.length-1;
   setActive(act.id);
@@ -802,6 +864,102 @@ function goHit(i){
     setTimeout(flash,450);
   }
 }
+
+/* ---------- animated counters ---------- */
+function runCounters(scope){
+  (scope||document).querySelectorAll('.kn:not([data-done])').forEach(el=>{
+    el.dataset.done='1';
+    const target=+el.dataset.n,suffix=el.dataset.suffix||'',t0=performance.now(),dur=1300;
+    (function step(now){
+      const p=Math.min(1,(now-t0)/dur),ease=1-Math.pow(1-p,3);
+      el.textContent=Math.round(target*ease)+ (p===1?suffix:'');
+      if(p<1)requestAnimationFrame(step);
+    })(t0);
+  });
+}
+const knObs=new IntersectionObserver(es=>{
+  es.forEach(en=>{if(en.isIntersecting){runCounters(en.target);knObs.unobserve(en.target);}});
+},{threshold:.3});
+document.querySelectorAll('.kstats').forEach(el=>knObs.observe(el));
+
+/* ---------- glossary tooltips ---------- */
+if(typeof GLOSSARY!=='undefined'&&GLOSSARY.length){
+  const gmap=new Map();
+  GLOSSARY.forEach(g=>gmap.set(g.t.toLowerCase(),g));
+  const terms=[...GLOSSARY].sort((a,b)=>b.t.length-a.t.length)
+    .map(g=>g.t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+  const gre=new RegExp('(?<![A-Za-z0-9-])('+terms.join('|')+')(?![A-Za-z0-9-])','g');
+  const walker=document.createTreeWalker(main,NodeFilter.SHOW_TEXT,{acceptNode(n){
+    if(!n.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+    const p=n.parentElement;
+    if(!p||p.closest('.gl,#sres,script,style,.kicker,.sch'))return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+  }});
+  const nodes=[];let nd;
+  while(nd=walker.nextNode())nodes.push(nd);
+  nodes.forEach(node=>{
+    const txt=node.nodeValue;
+    gre.lastIndex=0;
+    if(!gre.test(txt))return;
+    gre.lastIndex=0;
+    const frag=document.createDocumentFragment();
+    let last=0,m;
+    while(m=gre.exec(txt)){
+      if(m.index>last)frag.appendChild(document.createTextNode(txt.slice(last,m.index)));
+      const sp=document.createElement('span');
+      sp.className='gl';sp.textContent=m[0];sp.dataset.gl=m[0].toLowerCase();
+      frag.appendChild(sp);
+      last=m.index+m[0].length;
+    }
+    if(last<txt.length)frag.appendChild(document.createTextNode(txt.slice(last)));
+    node.parentNode.replaceChild(frag,node);
+  });
+  const gtip=document.createElement('div');gtip.id='gtip';document.body.appendChild(gtip);
+  function gShow(sp){
+    const g=gmap.get(sp.dataset.gl);if(!g)return;
+    gtip.innerHTML=`<div class="gt">${esc(g.t)}</div><div class="gd">${esc(g.d)}</div>`;
+    gtip.classList.add('on');
+    const r=sp.getBoundingClientRect(),tw=gtip.offsetWidth,th=gtip.offsetHeight;
+    let x=Math.min(Math.max(8,r.left+r.width/2-tw/2),innerWidth-tw-8);
+    let y=r.top-th-10;
+    if(y<var_hdr()+4)y=r.bottom+10;
+    gtip.style.left=x+'px';gtip.style.top=y+'px';
+  }
+  function var_hdr(){return 58}
+  main.addEventListener('mouseover',e=>{
+    const sp=e.target.closest('.gl');
+    if(sp)gShow(sp);else gtip.classList.remove('on');
+  });
+  main.addEventListener('mouseleave',()=>gtip.classList.remove('on'));
+  addEventListener('scroll',()=>gtip.classList.remove('on'),{passive:true});
+  /* מגע: הקשה מציגה, הקשה נוספת מסתירה */
+  main.addEventListener('click',e=>{
+    const sp=e.target.closest('.gl');
+    if(sp&&!gtip.classList.contains('on'))gShow(sp);
+  });
+}
+
+/* ---------- print ---------- */
+const printBtn=$('#printBtn');
+let _detSt=null;
+function printPrep(){
+  if(_detSt)return;
+  _detSt=[...document.querySelectorAll('#main details')].map(d=>{const o=d.open;d.open=true;return o;});
+}
+function printRestore(){
+  if(!_detSt)return;
+  [...document.querySelectorAll('#main details')].forEach((d,i)=>d.open=_detSt[i]);
+  _detSt=null;
+}
+printBtn.addEventListener('click',()=>{
+  if(present)togglePresent(false);
+  document.querySelectorAll('.rv').forEach(el=>el.classList.add('in'));
+  runCounters();
+  document.querySelectorAll('.kn').forEach(el=>{el.textContent=el.dataset.n+(el.dataset.suffix||'');el.dataset.done='1';});
+  setTimeout(()=>window.print(),60);
+});
+addEventListener('beforeprint',printPrep);
+addEventListener('afterprint',printRestore);
 
 /* nav clicks during presentation jump to slide */
 snav.addEventListener('click',e=>{
