@@ -99,15 +99,16 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 #gtip .gt{font-size:12.5px;font-weight:800;color:var(--pri);margin-bottom:4px;direction:ltr;text-align:right}
 #gtip .gd{font-size:12.5px;color:var(--dim);line-height:1.6}
 /* ── מונים מונפשים ── */
-.kstats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:34px}
-.kstat{text-align:center;padding:18px 8px 14px;border-radius:15px;background:var(--card2);
+.kstats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:34px}
+.kstat{text-align:center;padding:20px 16px 16px;border-radius:15px;background:var(--card2);
   border:1px solid var(--line);transition:border-color .3s,transform .3s}
 .kstat:hover{border-color:rgba(var(--pri-rgb),.45);transform:translateY(-3px)}
-.kstat .kn{font-size:clamp(26px,3vw,40px);font-weight:900;line-height:1.1;direction:ltr;
+.kstat .kn{font-size:clamp(28px,3.2vw,42px);font-weight:900;line-height:1.1;direction:ltr;
   background:linear-gradient(120deg,var(--pri),var(--sec));-webkit-background-clip:text;background-clip:text;color:transparent}
-.kstat .kt{font-size:12px;color:var(--dim);margin-top:5px;font-weight:500}
-@media(max-width:860px){.kstats{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:560px){.kstats{grid-template-columns:repeat(2,1fr)}}
+.kstat .kt{font-size:13.5px;color:var(--ink);margin-top:8px;font-weight:600;line-height:1.45}
+.kstat .kd{font-size:12px;color:var(--faint);margin-top:4px;font-weight:400;line-height:1.5}
+@media(max-width:860px){.kstats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.kstats{grid-template-columns:1fr}}
 /* ── הדפסה ── */
 @media print{
   body{--ink:#000;--dim:#333;--faint:#666;--line:#c8c8c8;--card:#fff;--card2:#fff;--hov:#fff;
@@ -589,9 +590,13 @@ function renderWorkplan(){
 
 function renderKpis(){
   const stats=(typeof STATS!=='undefined'&&STATS.length)
-    ?`<div class="kstats rv">${STATS.map(s=>`<div class="kstat">
-        <div class="kn" data-n="${+s.n||0}" data-suffix="${esc(s.suffix||'')}">0</div>
-        <div class="kt">${esc(s.t)}</div></div>`).join('')}</div>`
+    ?`<div class="kstats rv">${STATS.map(s=>{
+        const raw=String(s.v??((s.n||0)+(s.suffix||'')));
+        const m=raw.match(/^([^\d]*)([\d.,]+)(.*)$/)||[,'','0',raw];
+        return `<div class="kstat">
+        <div class="kn" data-prefix="${esc(m[1])}" data-n="${parseFloat(m[2].replace(/,/g,''))||0}" data-suffix="${esc(m[3])}">${esc(m[1])}0${esc(m[3])}</div>
+        <div class="kt">${esc(s.t)}</div>
+        ${s.d?`<div class="kd">${esc(s.d)}</div>`:''}</div>`;}).join('')}</div>`
     :'';
   return `<section class="sec theme-teal" id="kpis" data-nav="מדדי הצלחה">
     ${secHead(KPIS.kicker,KPIS.title,KPIS.sub)}
@@ -869,10 +874,11 @@ function goHit(i){
 function runCounters(scope){
   (scope||document).querySelectorAll('.kn:not([data-done])').forEach(el=>{
     el.dataset.done='1';
-    const target=+el.dataset.n,suffix=el.dataset.suffix||'',t0=performance.now(),dur=1300;
+    const target=+el.dataset.n,suffix=el.dataset.suffix||'',prefix=el.dataset.prefix||'',
+          t0=performance.now(),dur=1300;
     (function step(now){
       const p=Math.min(1,(now-t0)/dur),ease=1-Math.pow(1-p,3);
-      el.textContent=Math.round(target*ease)+ (p===1?suffix:'');
+      el.textContent=prefix+Math.round(target*ease)+suffix;
       if(p<1)requestAnimationFrame(step);
     })(t0);
   });
@@ -955,7 +961,7 @@ printBtn.addEventListener('click',()=>{
   if(present)togglePresent(false);
   document.querySelectorAll('.rv').forEach(el=>el.classList.add('in'));
   runCounters();
-  document.querySelectorAll('.kn').forEach(el=>{el.textContent=el.dataset.n+(el.dataset.suffix||'');el.dataset.done='1';});
+  document.querySelectorAll('.kn').forEach(el=>{el.textContent=(el.dataset.prefix||'')+el.dataset.n+(el.dataset.suffix||'');el.dataset.done='1';});
   setTimeout(()=>window.print(),60);
 });
 addEventListener('beforeprint',printPrep);
